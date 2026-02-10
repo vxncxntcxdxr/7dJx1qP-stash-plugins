@@ -13,7 +13,7 @@
             const response = await originalFetch(resource, config);
             // response interceptor here
             const contentType = response.headers.get("content-type");
-            if (contentType && contentType.indexOf("application/json") !== -1 && typeof resource === "string" && resource.endsWith('/graphql')) {
+            if (contentType && (contentType.indexOf("application/json") !== -1 || contentType.indexOf("application/graphql-response+json") !== -1) && typeof resource === "string" && resource.endsWith('/graphql')) {
                 try {
                     const data = await response.clone().json();
                     stashListener.dispatchEvent(new CustomEvent('response', { 'detail': data }));
@@ -200,6 +200,7 @@
                     this.processScenes(evt.detail);
                     this.processStudios(evt.detail);
                     this.processPerformers(evt.detail);
+                    this.processTags(evt.detail);
                     this.processApiKey(evt.detail);
                     this.dispatchEvent(new CustomEvent('stash:response', { 'detail': evt.detail }));
                 });
@@ -223,6 +224,7 @@
                 this.scenes = {};
                 this.studios = {};
                 this.performers = {};
+                this.tags = {};
                 this.userscripts = [];
                 this.sceneTaggerObserver = new MutationObserver(mutations => {
                     mutations.forEach(mutation => {
@@ -317,6 +319,35 @@
                     }
                     else {
                         this.dispatchLocationEvent(new Event('page:studio:details:expanded'));
+                    }
+                });
+            this.tagPageObserver = new MutationObserver(mutations => {
+                    let isEdit = false;
+                    let isCollapsed = false;
+                    mutations.forEach(mutation => {
+                        if (mutation.attributeName === 'class') {
+                            if (mutation.target.classList.contains('edit')) {
+                                isEdit = true;
+                            }
+                            else if (mutation.target.classList.contains('collapsed')) {
+                                isCollapsed = true;
+                            }
+                            else if (mutation.target.classList.contains('full-width')) {
+                                isCollapsed = false;
+                            }
+                        }
+                    });
+                    if (isEdit) {
+                        this.dispatchLocationEvent(new Event('page:tag:edit'));
+                    }
+                    else {
+                        this.dispatchLocationEvent(new Event('page:tag:details'));
+                    }
+                    if (isCollapsed) {
+                        this.dispatchLocationEvent(new Event('page:tag:details:collapsed'));
+                    }
+                    else {
+                        this.dispatchLocationEvent(new Event('page:tag:details:expanded'));
                     }
                 });
             }
@@ -551,21 +582,21 @@
                     this.dispatchLocationEvent(new Event('page:image'));
                 }
 
-                // movie scenes page
-                else if (this.matchUrl(location, /\/movies\/\d+\?/)) {
-                    this.log.debug('[Navigation] Movie Page - Scenes');
+                // group scenes page
+                else if (this.matchUrl(location, /\/groups\/\d+\?/)) {
+                    this.log.debug('[Navigation] Group Page - Scenes');
                     this.processTagger();
-                    this.dispatchLocationEvent(new Event('page:movie:scenes'));
+                    this.dispatchLocationEvent(new Event('page:group:scenes'));
                 }
-                // movie page
-                else if (this.matchUrl(location, /\/movies\/\d+/)) {
-                    this.log.debug('[Navigation] Movie Page');
-                    this.dispatchLocationEvent(new Event('page:movie'));
+                // group page
+                else if (this.matchUrl(location, /\/groups\/\d+/)) {
+                    this.log.debug('[Navigation] Group Page');
+                    this.dispatchLocationEvent(new Event('page:group'));
                 }
-                // movies wall
-                else if (this.matchUrl(location, /\/movies\?/)) {
-                    this.log.debug('[Navigation] Wall-Movies Page');
-                    this.dispatchLocationEvent(new Event('page:movies'));
+                // groups wall
+                else if (this.matchUrl(location, /\/groups\?/)) {
+                    this.log.debug('[Navigation] Wall-Groups Page');
+                    this.dispatchLocationEvent(new Event('page:groups'));
                 }
 
                 // galleries wall
@@ -590,10 +621,10 @@
                     this.log.debug('[Navigation] Performer Page - Galleries');
                     this.dispatchLocationEvent(new Event('page:performer:galleries'));
                 }
-                // performer movies page
-                else if (this.matchUrl(location, /\/performers\/\d+\/movies/)) {
-                    this.log.debug('[Navigation] Performer Page - Movies');
-                    this.dispatchLocationEvent(new Event('page:performer:movies'));
+                // performer groups page
+                else if (this.matchUrl(location, /\/performers\/\d+\/groups/)) {
+                    this.log.debug('[Navigation] Performer Page - Groups');
+                    this.dispatchLocationEvent(new Event('page:performer:groups'));
                 }
                 // performer appears with page
                 else if (this.matchUrl(location, /\/performers\/\d+\/appearswith/)) {
@@ -640,10 +671,10 @@
                     this.log.debug('[Navigation] Studio Page - Performers');
                     this.dispatchLocationEvent(new Event('page:studio:performers'));
                 }
-                // studio movies page
-                else if (this.matchUrl(location, /\/studios\/\d+\/movies/)) {
-                    this.log.debug('[Navigation] Studio Page - Movies');
-                    this.dispatchLocationEvent(new Event('page:studio:movies'));
+                // studio groups page
+                else if (this.matchUrl(location, /\/studios\/\d+\/groups/)) {
+                    this.log.debug('[Navigation] Studio Page - Groups');
+                    this.dispatchLocationEvent(new Event('page:studio:groups'));
                 }
                 // studio childstudios page
                 else if (this.matchUrl(location, /\/studios\/\d+\/childstudios/)) {
@@ -887,6 +918,13 @@
                 if (data.data.findPerformers?.performers) {
                     for (const performer of data.data.findPerformers.performers) {
                         this.performers[performer.id] = performer;
+                    }
+                }
+            }
+            processTags(data) {
+                if (data.data.findTags?.tags) {
+                    for (const tag of data.data.findTags.tags) {
+                        this.tags[tag.id] = tag;
                     }
                 }
             }

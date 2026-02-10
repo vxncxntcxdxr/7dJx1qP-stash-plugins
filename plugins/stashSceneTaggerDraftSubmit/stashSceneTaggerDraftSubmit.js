@@ -65,7 +65,7 @@
                 continue;
             }
 
-            const submit = createElementFromHTML('<div class="mt-2 text-right submit-draft"><button class="btn btn-primary">Submit StashDB Draft</button></div>');
+            const submit = createElementFromHTML('<div class="mt-2 text-right submit-draft"><button class="btn btn-primary">Submit stash-box Draft</button></div>');
             const submitButton = submit.querySelector('button');
             button.parentElement.parentElement.appendChild(submit);
             submitButton.addEventListener('click', async () => {
@@ -74,7 +74,7 @@
                     alert('No stashbox source selected.');
                     return;
                 }
-                const selectedStashboxIndex = parseInt(selectedStashbox.replace(/^stashbox:/, ''));
+                const selectedStashboxIndex = stashBoxes.findIndex(box => box.endpoint === selectedStashbox.replace(/^stashbox:/, ''));
                 const existingStashId = data.stash_ids.find(o => o.endpoint === stashBoxes[selectedStashboxIndex].endpoint);
                 if (existingStashId) {
                     alert(`Scene already has StashID for ${stashBoxes[selectedStashboxIndex].endpoint}.`);
